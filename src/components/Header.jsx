@@ -9,7 +9,7 @@ const Header = () => {
 					<p>Магазин лучших кроссовок</p>
 				</div>
 			</div>
-			<div>
+			<div className="user_ui">
 				<ul className="d-flex align-center">
 					<li className="mr-30 d-flex align-end">
 						<svg
