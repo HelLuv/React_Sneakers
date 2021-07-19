@@ -1,15 +1,54 @@
+import { useState } from 'react';
+import { useContext } from 'react';
+
+import { useCart } from './../../hooks/useCart';
+import { AppContext } from './../../App';
+import { Info } from '../Info';
+
 import styles from './Drawer.module.scss';
 
-const Drawer = ({ onClose, onRemove, items = [] }) => {
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const Drawer = ({ onClose, onRemove, opened, items = [] }) => {
+
+	const { instance } = useContext(AppContext);
+	const { cartItems, setCartItems, totalPrice } = useCart();
+	const [isOrderCompleted, setIsOrderCompleted] = useState(false);
+	const [orderId, setOrderId] = useState(null);
+	const [isLoading, setIsLoading] = useState(false);
+
+
+	const onClickOrder = async () => {
+		try {
+			setIsLoading(true);
+			const { data } = await instance.post('orders', {
+				items: cartItems
+			});
+			setOrderId(data.id);
+			setIsOrderCompleted(true);
+			setCartItems([]);
+
+			for (let i = 0; i < cartItems.length; i++) {
+				const item = cartItems[i];
+				await instance.delete('cart/' + item.id);
+				await delay(1000);
+			}
+		} catch (error) {
+			alert('Не удалось создать заказ :(');
+		}
+		setIsLoading(false);
+	};
+
 	return (
-		<div className={styles.overlay}>
-			<div className="drawer d-flex justify-between	flex-column	">
-				<div style={{ overflow: "auto" }}>
-					<h2 className="mb-30">Корзина <img onClick={onClose} className="removeBtn" src="/img/btn_remove.svg" alt="remove" /></h2>
+		<div className={`${styles.overlay} ${opened ? styles.overlayVisible : ''}`}>
+			<div className={`${styles.drawer} d-flex justify-between flex-column`}>
+				<div className="d-flex flex-column flex justify-between" style={{ overflow: "auto" }}>
+					<h2 className="mb-30 d-flex justify-between">Корзина <img onClick={onClose} className={styles.removeBtn} src="/img/btn_remove.svg" alt="remove" /></h2>
 					{
 						items.length > 0
-							? (<div>
-								<div className={styles.items}>
+							? (<>
+								<div className={styles.items} style={{ overflow: "auto" }}>
 									{items.map((obj, index) => (
 										<div key={obj.name + obj.imageUrl + index} className="cartItem d-flex align-center mb-20">
 											<div style={{ backgroundImage: `url(${obj.imageUrl})`, }} className="cartItemImg"></div>
@@ -25,28 +64,28 @@ const Drawer = ({ onClose, onRemove, items = [] }) => {
 										<li>
 											<span>Итого: </span>
 											<div></div>
-											<b>21 498 руб. </b>
+											<b>{totalPrice} руб. </b>
 											<b></b>
 										</li>
 										<li>
 											<span>Налог 5%: </span>
 											<div></div>
-											<b>1074 руб. </b>
+											<b>{totalPrice * 0.05} руб. </b>
 										</li>
 									</ul>
-									<button className="greenButton">Оформить заказ <img src="/img/arrow_cart.svg" alt="arrow_cart" /></button>
+									<button disabled={isLoading} onClick={onClickOrder} className="greenButton">Оформить заказ
+										<img src="/img/arrow_cart.svg" alt="arrow_cart" />
+									</button>
 								</div>
-							</div>)
+							</>)
 
-							: (<div className="cartEmpty d-flex align-center justify-center flex-column flex">
-								<img className="mb-20" width={120} height={120} src="/img/empty_cart.jpg" alt="Empty Cart" />
-								<h2>Корзина пустая</h2>
-								<p className="opacity-6">Добавьте хотя бы одну пару кроссовок, чтобы сделать заказ.</p>
-								<button onClick={onClose} className="greenButton">
-									<img className="pr-10" src="/img/arrow.svg" alt="Arrow" />
-									Вернуться назад
-								</button>
-							</div>)
+							: (
+								<Info
+									title={isOrderCompleted ? "Заказ оформлен!" : "Корзина пустая"}
+									description={isOrderCompleted ? `Ваш заказ #${orderId} скоро будет передан курьерской доставке` : "Добавьте хотя бы одну пару кроссовок, чтобы сделать заказ."}
+									image={isOrderCompleted ? "/img/complete_order.jpg" : "/img/empty_cart.jpg"}
+								/>
+							)
 					}
 				</div>
 			</div>
